@@ -13,6 +13,7 @@ editor_options:
 library(tidyverse) # Tidy packages
 library(sf) #Spatial package that can read and create shapefiles 
 library(mapview) #Interactive maps
+mapviewOptions(fgb = FALSE)
 library(LAGOSNE) #Lots and lots of clean lake data
 library(USAboundaries) #USA states and counties
 ```
@@ -99,9 +100,13 @@ minnesota_lakes %>%
 ## 1) Show a map outline of Iowa and Illinois (similar to Minnesota map upstream)
 
 ```{r}
+#Subeset to states of interest
+new_states <- states %>%
+  filter(name %in% c('Iowa', 'Illinois')) %>%
+  st_transform(2163)
 
-
-
+#Create map
+mapview(new_states)
 ```
 
 
@@ -109,9 +114,15 @@ minnesota_lakes %>%
 ## 2) Subset LAGOS data to these sites, how many sites are in Illinois and Iowa
 combined? How does this compare to Minnesota?
 
-```{r}
-
+```{r, echo = F}
+#Subset lakes based on spatial position
+new_lakes <- spatial_lakes[new_states,]
+new <- length(unique(new_lakes$lagoslakeid))
+mn <- length(unique(minnesota_lakes$lagoslakeid))
 ```
+
+There are almost twice as many lakes in MN (29,038 lakes) as in IA and IL 
+combined (16,466 lakes).
 
 
 ## 3) What is the distribution of lake size in Iowa vs. Minnesota?
@@ -119,21 +130,48 @@ combined? How does this compare to Minnesota?
 - Here I want to see a histogram plot with lake size on x-axis and frequency on 
 y axis (check out geom_histogram)
 
-```{r}
+```{r, warning=F, message=F}
+#Get IA outline
+iowa <- states %>%
+  filter(name == 'Iowa') %>%
+  st_transform(2163)
 
+#Prep state data
+ia_lakes <- spatial_lakes[iowa,] %>%
+  mutate(state = 'IA')
 
+mn_lakes <- minnesota_lakes %>%
+  mutate(state = 'MN')
+
+#Plot it!
+ia_lakes %>%
+  rbind(mn_lakes) %>%
+  tibble() %>%
+  ggplot(.,aes(x = lake_area_ha, color = state))+
+    scale_x_log10()+
+    geom_histogram()+
+    labs(x = 'Lake Area (ha)', y = 'Count')+
+    facet_wrap(~state)
 ```
 
+The shape of the distribution is similar between IA and MN (which makes sense 
+as they were both formed by the same glacial processes), but MN has many more
+lakes in each bin.
 
 ## 4) Make an interactive plot of lakes in Iowa and Illinois and color them
 by lake area in hectares
 
 ```{r}
-
+#Map lakes using previous code
+new_lakes %>%
+  arrange(-lake_area_ha) %>%
+    slice(1:1000) %>%
+  mapview(.,zcol = 'lake_area_ha')
 ```
-
 
 ## 5) What other data sources might we use to understand how reservoirs and 
 natural lakes vary in size in these three states? 
 
+You could use remotely sensed data to find larger lakes and the USGS's NHD database
+to find smaller ponds. 
 
